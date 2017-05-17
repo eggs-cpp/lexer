@@ -1,0 +1,63 @@
+# Eggs.Lexer
+#
+# Copyright Agustin K-ballo Berge, Fusion Fenix 2017
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+platform: x64
+
+environment:
+  matrix:
+    # MSVC 14.1
+    - GENERATOR: Visual Studio 15 2017 Win64
+      CXXFLAGS: /std:c++latest /permissive-
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+
+    # Clang/C2
+    - GENERATOR: Visual Studio 15 2017 Win64
+      TOOLSET: v141_clang_c2
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+
+    # LLVM
+    - GENERATOR: Visual Studio 14 2015 Win64
+      TOOLSET: LLVM-vs2014
+      CXXFLAGS: /EHsc
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+
+    # MinGW-w64
+    - GENERATOR: MinGW Makefiles
+      CXXFLAGS: -std=c++1z
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+
+configuration:
+  - Debug
+  - Release
+
+branches:
+  only:
+    - master
+    - develop
+
+init:
+  - ps: |
+      if ($env:GENERATOR -eq "MinGW Makefiles") {
+        $env:Path = 'C:\mingw-w64\x86_64-6.3.0-posix-seh-rt_v5-rev1\mingw64\bin;' + $env:Path
+        # Workaround for CMake not wanting sh.exe on PATH for MinGW Makefiles
+        $env:Path = $env:Path -replace 'C:\\Program Files\\Git\\usr\\bin;',$null
+      }
+
+build_script:
+  - mkdir build
+  - cd build
+  - echo cmake -G "%GENERATOR%" -T "%TOOLSET%"
+  - ps: |
+      if (Test-Path env:TOOLSET) {
+        cmake -G "$env:GENERATOR" -T "$env:TOOLSET" ..
+      } else {
+        cmake -G "$env:GENERATOR" ..
+      }
+  - echo cmake --build . --config %CONFIGURATION%
+  - cmake --build . --config %CONFIGURATION%
+  - echo ctest -V --build-config %CONFIGURATION%
+  - ctest -V --build-config %CONFIGURATION%

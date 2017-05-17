@@ -1,0 +1,34 @@
+# Eggs.Lexer
+#
+# Copyright Agustin K-ballo Berge, Fusion Fenix 2017
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+# - Config file for Eggs.Lexer
+#
+#  EGGS_LEXER_INCLUDE_DIRS - include directories
+#  EGGS_LEXER_LIBRARIES    - libraries to link against
+#
+# The following `IMPORTED` target is also defined:
+#
+#  Eggs::Lexer
+
+get_filename_component(
+  EGGS_LEXER_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
+
+include("${EGGS_LEXER_CMAKE_DIR}/eggs.lexer-targets.cmake")
+
+get_target_property(
+  _eggs_lexer_include_dirs
+  Eggs::Lexer INTERFACE_INCLUDE_DIRECTORIES)
+set(EGGS_LEXER_INCLUDE_DIRS ${_eggs_lexer_include_dirs})
+foreach (_eggs_lexer_include_dir ${_eggs_lexer_include_dirs})
+  if (NOT EXISTS "${_eggs_lexer_include_dir}")
+    message(FATAL_ERROR
+      "Directory ${_eggs_lexer_include_dir} referenced by"
+      " variable \${EGGS_LEXER_INCLUDE_DIRS} does not exist!")
+  endif()
+endforeach()
+
+set(EGGS_LEXER_LIBRARIES Eggs::Lexer)

@@ -1,0 +1,144 @@
+# Eggs.Lexer
+#
+# Copyright Agustin K-ballo Berge, Fusion Fenix 2017
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+language: cpp
+sudo: false
+
+matrix:
+  include:
+    # clang-3.8
+    - env: CLANG_VERSION=3.8 CXXFLAGS="-std=c++1z" BUILD_TYPE=Debug
+      os: linux
+      addons: &clang38
+        apt:
+          packages:
+            - cmake
+            - cmake-data
+            - clang-3.8
+          sources:
+            - george-edison55-precise-backports
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.8
+
+    - env: CLANG_VERSION=3.8 CXXFLAGS="-std=c++1z" BUILD_TYPE=Release
+      os: linux
+      addons: *clang38
+
+    # clang-3.9
+    - env: CLANG_VERSION=3.9 CXXFLAGS="-std=c++1z" BUILD_TYPE=Debug
+      os: linux
+      addons: &clang39
+        apt:
+          packages:
+            - cmake
+            - cmake-data
+            - clang-3.9
+          sources:
+            - george-edison55-precise-backports
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.9
+
+    - env: CLANG_VERSION=3.9 CXXFLAGS="-std=c++1z" BUILD_TYPE=Release
+      os: linux
+      addons: *clang39
+
+    # clang-4
+    - env: CLANG_VERSION=4.0 CXXFLAGS="-std=c++1z" BUILD_TYPE=Debug
+      os: linux
+      dist: trusty
+      addons: &clang4
+        apt:
+          packages:
+            - cmake
+            - cmake-data
+            - clang-4.0
+          sources:
+            - george-edison55-precise-backports
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-4.0
+
+    - env: CLANG_VERSION=4.0 CXXFLAGS="-std=c++1z" BUILD_TYPE=Release
+      os: linux
+      addons: *clang4
+
+    # gcc-5
+    - env: GCC_VERSION=5 CXXFLAGS="-std=c++1z" BUILD_TYPE=Debug
+      os: linux
+      addons: &gcc5
+        apt:
+          packages:
+            - cmake
+            - cmake-data
+            - g++-5
+          sources:
+            - george-edison55-precise-backports
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=5 CXXFLAGS="-std=c++1z" BUILD_TYPE=Release
+      os: linux
+      addons: *gcc5
+
+    # gcc-6
+    - env: GCC_VERSION=6 CXXFLAGS="-std=c++1z" BUILD_TYPE=Debug
+      os: linux
+      addons: &gcc6
+        apt:
+          packages:
+            - cmake
+            - cmake-data
+            - g++-6
+          sources:
+            - george-edison55-precise-backports
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=6 CXXFLAGS="-std=c++1z" BUILD_TYPE=Release
+      os: linux
+      addons: *gcc6
+
+    # Xcode 7.3
+    - env: CXXFLAGS="-std=c++1z" BUILD_TYPE=Debug
+      os: osx
+      osx_image: xcode7.3
+      addons: &xcode73
+
+    - env: CXXFLAGS="-std=c++1z" BUILD_TYPE=Release
+      os: osx
+      osx_image: xcode7.3
+      addons: *xcode73
+
+    # Xcode 8.3
+    - env: CXXFLAGS="-std=c++1z" BUILD_TYPE=Debug
+      os: osx
+      osx_image: xcode8.3
+      addons: &xcode83
+
+    - env: CXXFLAGS="-std=c++1z" BUILD_TYPE=Release
+      os: osx
+      osx_image: xcode8.3
+      addons: *xcode83
+
+branches:
+  only:
+    - master
+    - develop
+
+before_install:
+  - if [ -n "$GCC_VERSION" ]; then export CXX="g++-${GCC_VERSION}" CC="gcc-${GCC_VERSION}"; fi
+  - if [ -n "$CLANG_VERSION" ]; then export CXX="clang++-${CLANG_VERSION}" CC="clang-${CLANG_VERSION}"; fi
+
+install:
+  - mkdir build
+  - cd build
+  - export CXXFLAGS="${CXXFLAGS} -Wall -Wextra -Werror"
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+
+script:
+  - make -k
+  - ctest -V
+
+notifications:
+  email: false
