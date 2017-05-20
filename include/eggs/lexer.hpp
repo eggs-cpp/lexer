@@ -10,10 +10,20 @@
 #define EGGS_LEXER_HPP
 
 #include <eggs/lexer/lexer.hpp>
+#include <eggs/lexer/token.hpp>
 
 namespace eggs
 {
+    //! template <class Iterator>
+    //! using lexical_token = lexers::token<Iterator>;
+    template <typename Iterator>
+    using lexical_token = lexers::token<Iterator>;
+
+    //! using lexers::tokenize;
+    using lexers::tokenize;
+
     //! using lexers::lexer;
+    using lexers::lexer;
 }
 
 #endif /*EGGS_LEXER_HPP*/
