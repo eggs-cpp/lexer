@@ -5,7 +5,12 @@
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-set(_tests )
+set(_tests
+  token.cnstr
+  token.tokenize)
+set(_tests ${_tests}
+  lexer.cnstr
+  lexer.function_call)
 foreach (_test ${_tests})
   add_executable(test.${_test} ${_test}.cpp)
   target_link_libraries(test.${_test} Eggs::Lexer)

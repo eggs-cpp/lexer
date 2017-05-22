@@ -90,8 +90,7 @@ namespace eggs { namespace lexers
     //!
     //! \effects Demarcates a token starting at the beginning of the given
     //!  input range `[first, last)` by applying each of the tokenization
-    //!  rules and selecting the first lexeme such that no other lexeme is
-    //!  longer.
+    //!  rules and selecting the longest lexeme produced.
     //!
     //! \returns The demarcated token, if any; otherwise, an empty token.
     template <
@@ -103,6 +102,9 @@ namespace eggs { namespace lexers
         Iterator first, Sentinel last,
         Rules&&... rules)
     {
+        if (first == last)
+            return token<Iterator>{first, first};
+
         Iterator mark_iter = first;
         std::size_t mark_length = 0;
         int _sequencer[] = {([&](auto const& rule) -> void {
@@ -117,6 +119,13 @@ namespace eggs { namespace lexers
         }(rules), 0)...}; (void)_sequencer;
 
         return token<Iterator>{first, mark_iter};
+    }
+
+    template <typename Iterator, typename Sentinel>
+    token<Iterator> tokenize(
+        Iterator first, Sentinel /*last*/)
+    {
+        return token<Iterator>{first, first};
     }
 }}
 
