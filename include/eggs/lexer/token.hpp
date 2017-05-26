@@ -112,7 +112,9 @@ namespace eggs { namespace lexers
     //!
     //! \effects Demarcates a token starting at the beginning of the given
     //!  input range `[first, last)` by applying each of the tokenization
-    //!  rules and selecting the longest lexeme produced.
+    //!  rules in the order they appear in the parameter pack `rules`, and
+    //!  selecting the first lexeme produced such that no other lexeme is
+    //!  longer.
     //!
     //! \returns The demarcated token, if any; otherwise, an empty token.
     //!

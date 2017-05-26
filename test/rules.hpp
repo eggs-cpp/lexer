@@ -29,6 +29,16 @@ struct word
     }
 };
 
+struct unit
+{
+    template <typename I, typename S>
+    I operator()(I first, S last) const
+    {
+        while (first != last && !std::isspace(*first)) ++first;
+        return first;
+    }
+};
+
 struct punct
 {
     template <typename I, typename S>

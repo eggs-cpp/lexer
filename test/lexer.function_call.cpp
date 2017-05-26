@@ -61,4 +61,22 @@ TEST_CASE("lexer<Rules...>::operator()(Iterator, Sentinel, OutputIterator)", "[l
         CHECK(last == input + 0);
         CHECK(ts.size() == 0u);
     }
+
+    // first longest match
+    {
+        eggs::lexers::lexer<number, unit, word> l;
+
+        char const input[] = "123abc !";
+
+        std::vector<eggs::lexers::token<char const*>> ts;
+        auto const last = l(
+            input + 0, input + sizeof(input) - 1,
+            std::back_inserter(ts));
+
+        CHECK(last == input + 6);
+        REQUIRE(ts.size() == 1u);
+        CHECK(ts[0].category() == l.category_of<unit>());
+        CHECK(ts[0].first == input + 0);
+        CHECK(ts[0].second == input + 6);
+    }
 }

@@ -122,7 +122,8 @@ namespace eggs { namespace lexers
         //!  denoting the end of the input range.
         //!
         //! \remarks Tokens are demarcated as if by successive calls to
-        //!  `tokenize`.
+        //!  `tokenize`, where the order of the tokenization rules corresponds
+        //!  to their order in the parameter pack `Rules`.
         template <
             typename Iterator, typename Sentinel,
             typename OutputIterator>

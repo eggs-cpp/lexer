@@ -48,6 +48,19 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
         CHECK(t.first == input + 0);
         CHECK(t.second == input + 0);
     }
+
+    // first longest match
+    {
+        char const input[] = "123abc !";
+
+        auto const t = eggs::lexers::tokenize(
+            input + 0, input + sizeof(input) - 1,
+            number{}, unit{}, word{});
+
+        CHECK(t.category() == 1u);
+        CHECK(t.first == input + 0);
+        CHECK(t.second == input + 6);
+    }
 }
 
 TEST_CASE("tokenize(Iterator, Sentinel)", "[token.tokenize]")
