@@ -7,9 +7,11 @@
 
 set(_tests
   token.cnstr
+  token.category
   token.tokenize)
 set(_tests ${_tests}
   lexer.cnstr
+  lexer.category_of
   lexer.function_call)
 foreach (_test ${_tests})
   add_executable(test.${_test} ${_test}.cpp)

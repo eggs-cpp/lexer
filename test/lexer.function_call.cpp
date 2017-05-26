@@ -26,8 +26,10 @@ TEST_CASE("lexer<Rules...>::operator()(Iterator, Sentinel, OutputIterator)", "[l
 
     CHECK(last == input + 7);
     REQUIRE(ts.size() == 2u);
+    CHECK(ts[0].category() == l.category_of<word>());
     CHECK(ts[0].first == input + 0);
     CHECK(ts[0].second == input + 6);
+    CHECK(ts[1].category() == l.category_of<punct>());
     CHECK(ts[1].first == input + 6);
     CHECK(ts[1].second == input + 7);
 
@@ -42,6 +44,7 @@ TEST_CASE("lexer<Rules...>::operator()(Iterator, Sentinel, OutputIterator)", "[l
 
         CHECK(last == input + 6);
         REQUIRE(ts.size() == 1u);
+        CHECK(ts[0].category() == l.category_of<word>());
         CHECK(ts[0].first == input + 0);
         CHECK(ts[0].second == input + 6);
     }

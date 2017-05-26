@@ -45,8 +45,8 @@ namespace eggs { namespace lexers
     //! template <class Iterator>
     //! class token : public std::pair<Iterator, Iterator>;
     //!
-    //! Class template `token` denotes the lexeme produced by a Tokenization
-    //! Rule.
+    //! Class template `token` denotes the categorized lexeme produced by a
+    //! Tokenization Rule.
     //!
     //! \requires The type `Iterator` shall satisfy ForwardIterator.
     template <typename Iterator>
@@ -54,29 +54,51 @@ namespace eggs { namespace lexers
       : public std::pair<Iterator, Iterator>
     {
     public:
+        //! using iterator = Iterator;
         using iterator = Iterator;
+
+        //! static constexpr std::size_t no_category = std::size_t(-1);
+        static constexpr std::size_t no_category = std::size_t(-1);
 
     public:
         //! constexpr token();
         //!
-        //! \effects Value-initializes the pair base class subobject.
+        //! \effects Initializes the category to `no_category`, and
+        //!  value-initializes the pair base class subobject.
         constexpr token()
           : token::pair()
+          , _category(no_category)
         {}
 
-        //! constexpr token(iterator begin, iterator end)
+        //! constexpr token(std::size_t category, iterator begin, iterator end)
         //!
         //! \preconditions `[begin, end)` shall denote a valid range.
         //!
-        //! \effects Initializes the pair base class subobject with the given
-        //!  iterator pair denoting a lexeme.
-        constexpr token(iterator begin, iterator end)
+        //! \effects Initializes the category with the given value, and
+        //!  initializes the pair base class subobject with the given iterator
+        //!  pair denoting a lexeme.
+        constexpr token(std::size_t category, iterator begin, iterator end)
           : token::pair(begin, end)
+          , _category(category)
         {}
 
         token(token const&) = default;
         token& operator=(token const&) = default;
+
+        //! constexpr std::size_t category() const noexcept
+        //!
+        //! \returns The category of this token.
+        constexpr std::size_t category() const noexcept
+        {
+            return _category;
+        }
+
+    private:
+        std::size_t _category;
     };
+
+    template <typename Iterator>
+    std::size_t const token<Iterator>::no_category;
 
     ///////////////////////////////////////////////////////////////////////////
     //! template <class Iterator, class Sentinel, class ...Rules>
@@ -93,6 +115,9 @@ namespace eggs { namespace lexers
     //!  rules and selecting the longest lexeme produced.
     //!
     //! \returns The demarcated token, if any; otherwise, an empty token.
+    //!
+    //! \remarks The category of the resulting token is the 0-based index in
+    //!  the parameter pack `rules` of the rule that demarcated it.
     template <
         typename Iterator, typename Sentinel,
         typename ...Rules,
@@ -102,30 +127,33 @@ namespace eggs { namespace lexers
         Iterator first, Sentinel last,
         Rules&&... rules)
     {
+        std::size_t mark_category = token<Iterator>::no_category;
         if (first == last)
-            return token<Iterator>{first, first};
+            return token<Iterator>{mark_category, first, first};
 
         Iterator mark_iter = first;
         std::size_t mark_length = 0;
+        std::size_t category = 0;
         int _sequencer[] = {([&](auto const& rule) -> void {
             Iterator const result = rule(first, last);
-
             std::size_t const length = std::distance(first, result);
             if (length > mark_length)
             {
+                mark_category = category;
                 mark_iter = result;
                 mark_length = length;
             }
+            ++category;
         }(rules), 0)...}; (void)_sequencer;
 
-        return token<Iterator>{first, mark_iter};
+        return token<Iterator>{mark_category, first, mark_iter};
     }
 
     template <typename Iterator, typename Sentinel>
     token<Iterator> tokenize(
         Iterator first, Sentinel /*last*/)
     {
-        return token<Iterator>{first, first};
+        return token<Iterator>{token<Iterator>::no_category, first, first};
     }
 }}
 

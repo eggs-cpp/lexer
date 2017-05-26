@@ -11,6 +11,7 @@
 
 #include <eggs/lexer/token.hpp>
 
+#include <cassert>
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
@@ -18,6 +19,22 @@
 
 namespace eggs { namespace lexers
 {
+    namespace detail
+    {
+        template <typename T, typename ...Ts>
+        struct index_of;
+
+        template <typename T, typename ...Ts>
+        struct index_of<T, T, Ts...>
+          : std::integral_constant<std::size_t, 0>
+        {};
+
+        template <typename T, typename U, typename ...Ts>
+        struct index_of<T, U, Ts...>
+          : std::integral_constant<std::size_t, 1 + index_of<T, Ts...>::value>
+        {};
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     //! template <class ...Rules>
     //! class lexer;
@@ -72,6 +89,19 @@ namespace eggs { namespace lexers
         lexer& operator=(lexer const&) = default;
         lexer& operator=(lexer&&) = default;
 
+        //! template <class Rule>
+        //! static constexpr std::size_t category_of() noexcept
+        //!
+        //! \requires `Rule` shall occur exactly once in the parameter pack
+        //!  `Rules`.
+        //!
+        //! \returns The category corresponding to the given tokenization rule.
+        template <typename Rule>
+        static constexpr std::size_t category_of() noexcept
+        {
+            return detail::index_of<Rule, Rules...>::value;
+        };
+
         //! template <class Iterator, class Sentinel, class OutputIterator>
         //! Iterator operator()(Iterator first, Sentinel last, OutputIterator result) const
         //!
@@ -119,9 +149,10 @@ namespace eggs { namespace lexers
             {
                 token<Iterator> token =
                     tokenize(first, last, std::get<Is>(_rules)...);
-                if (token.first == token.second)
+                if (token.category() == token.no_category)
                     break;
 
+                assert(token.first != token.second && "lexeme cannot be empty");
                 first = token.second;
                 *result++ = std::move(token);
             }
@@ -131,6 +162,22 @@ namespace eggs { namespace lexers
     private:
         std::tuple<Rules...> _rules;
     };
+
+    //! template <class Rule, class Lexer>
+    //! struct category_of;
+    //!
+    //! \requires `Lexer` shall be an instance of `lexer`.
+    //!
+    //! \remarks Specializations shall meet the `UnaryTypeTrait` requirements
+    //!  with a `BaseCharacteristic` of `std::integral_constant<std::size_t, C>`
+    //!  for some `C` that uniquely corresponds to `Rule` for the given `Lexer`.
+    template <typename Rule, typename Lexer>
+    struct category_of;
+
+    template <typename Rule, typename ...Rules>
+    struct category_of<Rule, lexer<Rules...>>
+      : detail::index_of<Rule, Rules...>
+    {};
 }}
 
 #endif /*EGGS_LEXER_LEXER_HPP*/

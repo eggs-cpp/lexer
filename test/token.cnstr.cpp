@@ -14,6 +14,7 @@ TEST_CASE("token<Iterator>::token()", "[token.cnstr]")
 {
     eggs::lexers::token<char const*> t;
 
+    CHECK(t.category() == t.no_category);
     CHECK(t.first == nullptr);
     CHECK(t.second == nullptr);
 
@@ -21,17 +22,19 @@ TEST_CASE("token<Iterator>::token()", "[token.cnstr]")
     {
         constexpr eggs::lexers::token<char const*> t;
 
+        static_assert(t.category() == t.no_category);
         static_assert(t.first == nullptr);
         static_assert(t.second == nullptr);
     }
 }
 
-TEST_CASE("token<Iterator>::token(iterator, iterator)", "[token.cnstr]")
+TEST_CASE("token<Iterator>::token(std::size_t, iterator, iterator)", "[token.cnstr]")
 {
     char const lexeme[] = "lexeme";
 
-    eggs::lexers::token<char const*> t(lexeme + 0, lexeme + 6);
+    eggs::lexers::token<char const*> t(1u, lexeme + 0, lexeme + 6);
 
+    CHECK(t.category() == 1u);
     CHECK(t.first == lexeme + 0);
     CHECK(t.second == lexeme + 6);
 
@@ -39,8 +42,9 @@ TEST_CASE("token<Iterator>::token(iterator, iterator)", "[token.cnstr]")
     {
         static constexpr char lexeme[] = "lexeme";
 
-        constexpr eggs::lexers::token<char const*> t(lexeme + 0, lexeme + 6);
+        constexpr eggs::lexers::token<char const*> t(1u, lexeme + 0, lexeme + 6);
 
+        static_assert(t.category() == 1u);
         static_assert(t.first == lexeme + 0);
         static_assert(t.second == lexeme + 6);
     }

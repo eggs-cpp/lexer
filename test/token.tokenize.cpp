@@ -19,6 +19,7 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
         input + 0, input + sizeof(input) - 1,
         number{}, word{});
 
+    CHECK(t.category() == 1u);
     CHECK(t.first == input + 0);
     CHECK(t.second == input + 6);
 
@@ -30,6 +31,7 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
             input + 0, input + sizeof(input) - 1,
             number{}, word{});
 
+        CHECK(t.category() == t.no_category);
         CHECK(t.first == input + 0);
         CHECK(t.second == input + 0);
     }
@@ -42,6 +44,7 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
             input + 0, input + sizeof(input) - 1,
             number{}, word{});
 
+        CHECK(t.category() == t.no_category);
         CHECK(t.first == input + 0);
         CHECK(t.second == input + 0);
     }
@@ -54,6 +57,7 @@ TEST_CASE("tokenize(Iterator, Sentinel)", "[token.tokenize]")
     auto const t = eggs::lexers::tokenize(
         input + 0, input + sizeof(input) - 1);
 
+    CHECK(t.category() == t.no_category);
     CHECK(t.first == input + 0);
     CHECK(t.second == input + 0);
 }
