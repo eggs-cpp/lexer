@@ -106,11 +106,107 @@ namespace eggs { namespace lexers
           , value(std::forward<Args>(args)...)
         {}
 
+        //! template <class UValue>
+        //! constexpr EXPLICIT token(token<Iterator, UValue> const& other)
+        //!
+        //! \effects Initializes this token with the contents from `other`.
+        //!
+        //! \remarks This constructor shall not participate in overload
+        //!  resolution unless `std::is_constructible_v<Value, UValue const&>`
+        //!  is `true`, or `Value` is `void`. The constructor is explicit if
+        //!  and only if `std::is_convertible_v<UValue const&, Value>` is
+        //!  `false`.
+        template <
+            typename UValue, std::enable_if_t<
+                std::is_constructible_v<Value, UValue const&>
+             && std::is_convertible_v<UValue const&, Value>,
+                bool> = false>
+        constexpr token(token<Iterator, UValue> const& other)
+          : token<Iterator>(other)
+          , value(other.value)
+        {};
+
+        template <
+            typename UValue, std::enable_if_t<
+                std::is_constructible_v<Value, UValue const&>
+             && !std::is_convertible_v<UValue const&, Value>,
+                bool> = false>
+        constexpr explicit token(token<Iterator, UValue> const& other)
+          : token<Iterator>(other)
+          , value(other.value)
+        {};
+
+        //! template <class UValue>
+        //! constexpr EXPLICIT token(token<Iterator, UValue>&& other)
+        //!
+        //! \effects Initializes this token with the contents from `other`.
+        //!
+        //! \remarks This constructor shall not participate in overload
+        //!  resolution unless `std::is_constructible_v<Value, UValue&&>`
+        //!  is `true`, or `Value` is `void`. The constructor is explicit if
+        //!  and only if `std::is_convertible_v<UValue&&, Value>` is
+        //!  `false`.
+        template <
+            typename UValue, std::enable_if_t<
+                std::is_constructible_v<Value, UValue&&>
+             && std::is_convertible_v<UValue&&, Value>,
+                bool> = false>
+        constexpr token(token<Iterator, UValue>&& other)
+          : token<Iterator>(std::move(other))
+          , value(std::move(other).value)
+        {};
+
+        template <
+            typename UValue, std::enable_if_t<
+                std::is_constructible_v<Value, UValue&&>
+             && !std::is_convertible_v<UValue&&, Value>,
+                bool> = false>
+        constexpr explicit token(token<Iterator, UValue>&& other)
+          : token<Iterator>(std::move(other))
+          , value(std::move(other).value)
+        {};
+
         //! token(token const&) = default;
         token(token const&) = default;
 
         //! token(token&&) = default;
         token(token&&) = default;
+
+        //! template <class UValue>
+        //! token& operator=(token<Iterator, UValue> const& other)
+        //!
+        //! \effects Assigns to this token the contents from `other`.
+        //!
+        //! \remarks This function shall not participate in overload res
+        //!  resolution unless `std::is_assignable_v<Value&, UValue const&>`
+        //!  is `true`, or `Value` is `void`.
+        template <
+            typename UValue, typename Enable = std::enable_if_t<
+                std::is_assignable_v<Value&, UValue const&>>>
+        token& operator=(token<Iterator, UValue> const& other)
+        {
+            token<Iterator>::operator=(other);
+            value = other.value;
+            return *this;
+        };
+
+        //! template <class UValue>
+        //! token& operator=(token<Iterator, UValue>&& other)
+        //!
+        //! \effects Assigns to this token the contents from `other`.
+        //!
+        //! \remarks This function shall not participate in overload
+        //!  resolution unless `std::is_assignable_v<Value&, UValue&&>`
+        //!  is `true`, or `Value` is `void`.
+        template <
+            typename UValue, typename Enable = std::enable_if_t<
+                std::is_assignable_v<Value&, UValue&&>>>
+        token& operator=(token<Iterator, UValue>&& other)
+        {
+            token<Iterator>::operator=(std::move(other));
+            value = std::move(other).value;
+            return *this;
+        }
 
         //! token& operator=(token const&) = default;
         token& operator=(token const&) = default;
@@ -161,7 +257,21 @@ namespace eggs { namespace lexers
           , _category(category)
         {}
 
+        template <typename UValue>
+        constexpr token(token<Iterator, UValue> const& other)
+          : token::pair(other)
+          , _category(other._category)
+        {};
+
         token(token const&) = default;
+
+        template <typename UValue>
+        token& operator=(token<Iterator, UValue> const& other)
+        {
+            token::pair::operator=(other);
+            _category = other._category;
+            return *this;
+        };
 
         token& operator=(token const&) = default;
 

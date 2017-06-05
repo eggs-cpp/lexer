@@ -34,6 +34,30 @@ struct non_default_constructible_value : value
     non_default_constructible_value() = delete;
 };
 
+struct convertible : value
+{
+    convertible(int x = 2, int y = 0) : value(x, y) {}
+};
+
+struct constexpr_convertible : constexpr_value
+{
+    constexpr constexpr_convertible(int x = 2, int y = 0) : constexpr_value(x, y) {}
+};
+
+struct explicitly_convertible
+{
+    value p;
+    explicitly_convertible(int x = 3, int y = 0) : p(x, y) {}
+    explicit operator value() const { return p; };
+};
+
+struct constexpr_explicit
+{
+    constexpr_value p;
+    constexpr constexpr_explicit(int x = 3, int y = 0) : p(x, y) {}
+    constexpr explicit operator constexpr_value() const { return p; };
+};
+
 TEST_CASE("token<Iterator, Value>::token()", "[token.cnstr]")
 {
     value::default_constructor_calls = 0;
@@ -190,13 +214,132 @@ TEST_CASE("token<Iterator>::token(std::size_t, Iterator, Iterator)", "[token.cns
 
     // sfinae
     {
-        constexpr bool constructible_constructible =
+        constexpr bool constructible =
             std::is_constructible_v<
                 eggs::lexers::token<char const*>, int>;
-        static_assert(constructible_constructible == false);
+        static_assert(constructible == false);
     }
 }
 
+TEST_CASE("token<Iterator, Value>::token(token<Iterator, UValue> const&)", "[token.cnstr]")
+{
+    char const lexeme[] = "lexeme";
+    eggs::lexers::token<char const*, convertible> const tu(
+        1u, lexeme + 0, lexeme + 6);
+
+    eggs::lexers::token<char const*, value> t = tu;
+
+    CHECK(t.category() == 1u);
+    CHECK(t.first == lexeme + 0);
+    CHECK(t.second == lexeme + 6);
+    CHECK(t.value.x == 2);
+    CHECK(t.value.y == 0);
+
+    // constexpr
+    {
+        static constexpr char lexeme[] = "lexeme";
+        constexpr eggs::lexers::token<char const*, constexpr_convertible> tu(
+            1u, lexeme + 0, lexeme + 6);
+
+        constexpr eggs::lexers::token<char const*, constexpr_value> t = tu;
+
+        static_assert(t.category() == 1u);
+        static_assert(t.first == lexeme + 0);
+        static_assert(t.second == lexeme + 6);
+        static_assert(t.value.x == 2);
+        static_assert(t.value.y == 0);
+    }
+
+    // explicit
+    {
+        char const lexeme[] = "lexeme";
+        eggs::lexers::token<char const*, explicitly_convertible> const tu(
+            1u, lexeme + 0, lexeme + 6);
+
+        eggs::lexers::token<char const*, value> t(tu);
+
+        CHECK(t.category() == 1u);
+        CHECK(t.first == lexeme + 0);
+        CHECK(t.second == lexeme + 6);
+        CHECK(t.value.x == 3);
+        CHECK(t.value.y == 0);
+
+        constexpr bool convertible =
+            std::is_convertible_v<
+                eggs::lexers::token<char const*, explicitly_convertible> const&,
+                eggs::lexers::token<char const*, value>>;
+        static_assert(convertible == false);
+
+        // constexpr
+        {
+            static constexpr char lexeme[] = "lexeme";
+            constexpr eggs::lexers::token<char const*, constexpr_explicit> tu(
+                1u, lexeme + 0, lexeme + 6);
+
+            constexpr eggs::lexers::token<char const*, constexpr_value> t(tu);
+
+            static_assert(t.category() == 1u);
+            static_assert(t.first == lexeme + 0);
+            static_assert(t.second == lexeme + 6);
+            static_assert(t.value.x == 3);
+            static_assert(t.value.y == 0);
+        }
+    }
+
+    // sfinae
+    {
+        constexpr bool constructible =
+            std::is_constructible_v<
+                eggs::lexers::token<char const*, value>,
+                eggs::lexers::token<char const*, void*> const&>;
+        static_assert(constructible == false);
+    }
+}
+
+TEST_CASE("token<Iterator, Value>::token(token<Iterator, UValue>&&)", "[token.cnstr]")
+{
+    char const lexeme[] = "lexeme";
+    eggs::lexers::token<char const*, convertible> tu(
+        1u, lexeme + 0, lexeme + 6);
+
+    eggs::lexers::token<char const*, value> t = std::move(tu);
+
+    CHECK(t.category() == 1u);
+    CHECK(t.first == lexeme + 0);
+    CHECK(t.second == lexeme + 6);
+    CHECK(t.value.x == 2);
+    CHECK(t.value.y == 0);
+
+    // explicit
+    {
+        char const lexeme[] = "lexeme";
+        eggs::lexers::token<char const*, explicitly_convertible> tu(
+            1u, lexeme + 0, lexeme + 6);
+
+        eggs::lexers::token<char const*, value> t(std::move(tu));
+
+        CHECK(t.category() == 1u);
+        CHECK(t.first == lexeme + 0);
+        CHECK(t.second == lexeme + 6);
+        CHECK(t.value.x == 3);
+        CHECK(t.value.y == 0);
+
+        constexpr bool convertible =
+            std::is_convertible_v<
+                eggs::lexers::token<char const*, explicitly_convertible>&&,
+                eggs::lexers::token<char const*, value>>;
+        static_assert(convertible == false);
+    }
+
+    // sfinae
+    {
+        constexpr bool constructible =
+            std::is_constructible_v<
+                eggs::lexers::token<char const*, value>,
+                eggs::lexers::token<char const*, void*>&&>;
+        static_assert(constructible == false);
+    }
+}
 
 TEST_CASE("token<Iterator>::token(token<Iterator, Value>)", "[token.cnstr]")
 {

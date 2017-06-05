@@ -6,6 +6,7 @@
 # file LICENSE.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 set(_tests
+  token.assign
   token.cnstr
   token.category
   token.tokenize)
