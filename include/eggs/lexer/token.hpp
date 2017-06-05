@@ -42,20 +42,98 @@ namespace eggs { namespace lexers
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    //! template <class Iterator>
-    //! class token : public std::pair<Iterator, Iterator>;
+    //! template <class Iterator, class Value = void>
+    //! class token : public std::pair<Iterator, Iterator>, see-below;
     //!
-    //! Class template `token` denotes the categorized lexeme produced by a
-    //! Tokenization Rule.
+    //! Class template `token` represents a categorized lexeme produced by a
+    //! Tokenization Rule, along with its associated value (if any).
     //!
     //! \requires The type `Iterator` shall satisfy ForwardIterator.
-    template <typename Iterator>
+    //!
+    //! \remarks A token class whose `Value` is not `void` derives from
+    //!  `token<Iterator>`, in order to enable slicing the associated value.
+    template <typename Iterator, typename Value = void>
     class token
+      : public token<Iterator>
+    {
+    public:
+        //! using iterator_type = Iterator;
+        using iterator_type = Iterator;
+
+        //! using value_type = Value;
+        using value_type = Value;
+
+        //! Value value; // only if `Value` is not `void`
+        Value value;
+
+    public:
+        //! constexpr token();
+        //!
+        //! \effects Initializes the category to `no_category`, and
+        //!  value-initializes the pair base class subobject and the value.
+        //!
+        //! \remarks This constructor shall not participate in overload
+        //!  resolution unless `std::is_default_constructible_v<Value>`
+        //!  is `true`, or `Value` is `void`.
+        template <
+            typename Depend = void, typename Enable = std::enable_if_t<
+                std::is_default_constructible_v<Value>, Depend>>
+        constexpr token()
+          : token<Iterator>()
+          , value()
+        {}
+
+        //! template <class ...Args>
+        //! constexpr token(std::size_t category, Iterator begin, Iterator end, Args&&... args)
+        //!
+        //! \preconditions `[begin, end)` shall denote a valid range.
+        //!
+        //! \effects Initializes the category with the given value,
+        //!  initializes the pair base class subobject with the given iterator
+        //!  pair denoting a lexeme, and initializes the value from the
+        //!  given arguments.
+        //!
+        //! \remarks This constructor shall not participate in overload
+        //!  resolution unless `std::is_constructible_v<Value, Args...>`
+        //!  is `true`, or `Value` is `void`.
+        template <
+            typename ...Args, typename Enable = std::enable_if_t<
+                std::is_constructible_v<Value, Args...>>>
+        constexpr token(
+            std::size_t category, Iterator begin, Iterator end,
+            Args&&... args)
+          : token<Iterator>(category, begin, end)
+          , value(std::forward<Args>(args)...)
+        {}
+
+        //! token(token const&) = default;
+        token(token const&) = default;
+
+        //! token(token&&) = default;
+        token(token&&) = default;
+
+        //! token& operator=(token const&) = default;
+        token& operator=(token const&) = default;
+
+        //! token& operator=(token&&) = default;
+        token& operator=(token&&) = default;
+
+        //! constexpr std::size_t category() const noexcept
+        //!
+        //! \returns The category of this token.
+        using token<Iterator>::category;
+    };
+
+    template <typename Iterator>
+    class token<Iterator>
       : public std::pair<Iterator, Iterator>
     {
     public:
-        //! using iterator = Iterator;
-        using iterator = Iterator;
+        //! using iterator_type = Iterator;
+        using iterator_type = Iterator;
+
+        //! using value_type = void;
+        using value_type = void;
 
         //! static constexpr std::size_t no_category = std::size_t(-1);
         static constexpr std::size_t no_category = std::size_t(-1);
@@ -70,19 +148,21 @@ namespace eggs { namespace lexers
           , _category(no_category)
         {}
 
-        //! constexpr token(std::size_t category, iterator begin, iterator end)
+        //! constexpr token(std::size_t category, Iterator begin, Iterator end)
         //!
         //! \preconditions `[begin, end)` shall denote a valid range.
         //!
-        //! \effects Initializes the category with the given value, and
+        //! \effects Initializes the category with the given value,
         //!  initializes the pair base class subobject with the given iterator
         //!  pair denoting a lexeme.
-        constexpr token(std::size_t category, iterator begin, iterator end)
+        constexpr token(
+            std::size_t category, Iterator begin, Iterator end)
           : token::pair(begin, end)
           , _category(category)
         {}
 
         token(token const&) = default;
+
         token& operator=(token const&) = default;
 
         //! constexpr std::size_t category() const noexcept
