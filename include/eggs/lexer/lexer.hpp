@@ -10,6 +10,7 @@
 #define EGGS_LEXER_LEXER_HPP
 
 #include <eggs/lexer/token.hpp>
+#include <eggs/lexer/tokenize.hpp>
 
 #include <cassert>
 #include <cstddef>

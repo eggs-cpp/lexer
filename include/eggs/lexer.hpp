@@ -11,6 +11,7 @@
 
 #include <eggs/lexer/lexer.hpp>
 #include <eggs/lexer/token.hpp>
+#include <eggs/lexer/tokenize.hpp>
 
 namespace eggs
 {
