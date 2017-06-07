@@ -9,7 +9,9 @@
 #define RULES_HPP
 
 #include <cctype>
+#include <utility>
 
+///////////////////////////////////////////////////////////////////////////////
 struct number
 {
     template <typename I, typename S>
@@ -48,5 +50,31 @@ struct punct
         return first;
     }
 };
+
+///////////////////////////////////////////////////////////////////////////////
+template <typename Rule, typename Value>
+struct rule_with_value
+{
+    Value value;
+    Rule rule = {};
+
+    template <typename I, typename S>
+    std::pair<I, Value> operator()(I first, S last) const
+    {
+        return std::make_pair(rule(first, last), value);
+    }
+};
+
+template <typename Value>
+using number_with_value = rule_with_value<number, Value>;
+
+template <typename Value>
+using word_with_value = rule_with_value<word, Value>;
+
+template <typename Value>
+using unit_with_value = rule_with_value<unit, Value>;
+
+template <typename Value>
+using punct_with_value = rule_with_value<punct, Value>;
 
 #endif /*RULES_HPP*/

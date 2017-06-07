@@ -52,6 +52,14 @@ namespace eggs { namespace lexers
         static_assert(sizeof...(Rules) > 0);
 
     public:
+        //! template <class Iterator, class Sentinel = Iterator>
+        //! using token = lexers::token<Iterator, Value>;
+        template <typename Iterator, typename Sentinel = Iterator>
+        using token = decltype(lexers::tokenize(
+            std::declval<Iterator>(), std::declval<Sentinel>(),
+            std::declval<Rules>()...));
+
+    public:
         //! constexpr lexer() = default;
         //!
         //! \effects Value-initializes each tokenization rule.
@@ -149,8 +157,8 @@ namespace eggs { namespace lexers
         {
             while (first != last)
             {
-                token<Iterator> token =
-                    tokenize(first, last, std::get<Is>(_rules)...);
+                token<Iterator, Sentinel> token =
+                    lexers::tokenize(first, last, std::get<Is>(_rules)...);
                 if (token.category() == token.no_category)
                     break;
 

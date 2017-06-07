@@ -6,6 +6,7 @@
 // file LICENSE.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 #include <eggs/lexer/tokenize.hpp>
+#include <type_traits>
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
@@ -22,6 +23,12 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
     CHECK(t.category() == 1u);
     CHECK(t.first == input + 0);
     CHECK(t.second == input + 6);
+
+    constexpr bool no_value =
+        std::is_same_v<
+            eggs::lexers::token<char const*> const,
+            decltype(t)>;
+    static_assert(no_value == true);
 
     // no match
     {
@@ -61,6 +68,34 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
         CHECK(t.first == input + 0);
         CHECK(t.second == input + 6);
     }
+
+    // value
+    {
+        char const input[] = "123abc!";
+
+        auto const t0 = eggs::lexers::tokenize(
+            input + 0, input + sizeof(input) - 1,
+            number_with_value<int>{42},
+            word_with_value<int>{43});
+
+        REQUIRE(t0.value.index() == 2u);
+        CHECK(std::get<2>(t0.value) == 43);
+
+        auto const t1 = eggs::lexers::tokenize(
+            input + 0, input + sizeof(input) - 1,
+            number{},
+            word_with_value<int>{43});
+
+        REQUIRE(t1.value.index() == 1u);
+        CHECK(std::get<1>(t1.value) == 43);
+
+        auto const t2 = eggs::lexers::tokenize(
+            input + 0, input + sizeof(input) - 1,
+            number_with_value<int>{42},
+            word{});
+
+        REQUIRE(t2.value.index() == 0u);
+    }
 }
 
 TEST_CASE("tokenize(Iterator, Sentinel)", "[token.tokenize]")
@@ -73,4 +108,10 @@ TEST_CASE("tokenize(Iterator, Sentinel)", "[token.tokenize]")
     CHECK(t.category() == t.no_category);
     CHECK(t.first == input + 0);
     CHECK(t.second == input + 0);
+
+    constexpr bool no_value =
+        std::is_same_v<
+            eggs::lexers::token<char const*> const,
+            decltype(t)>;
+    static_assert(no_value == true);
 }
