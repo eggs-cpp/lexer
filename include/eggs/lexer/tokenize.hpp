@@ -37,7 +37,14 @@ namespace eggs { namespace lexers
     //!   - `auto&& [mark, value] = rule(first, last);`.
     //!
     //! - the resulting range `[first, mark)` shall be valid; if non-empty, it
-    //!   denotes the lexeme of a demarcated token. The produced `value`
+    //!   denotes the lexeme of a demarcated token.
+    //!
+    //! - given a token `t` of type `token<decltype(first), Value>`, where
+    //!   `Value` is `decltype(value)` if one exists or `void` otherwise, then
+    //!   if the expression `rule.evaluate(std::move(t))` is well-formed it is
+    //!   evaluated with the demarcated token along with its intermediate
+    //!   associated value, and its return value (if any) is the associated
+    //!   value of the demarcated token. Otherwise, the intermediate `value`
     //!   (if any) is the associated value of the demarcated token.
     namespace detail
     {
@@ -77,27 +84,92 @@ namespace eggs { namespace lexers
             return std::move(s.second);
         }
 
+        template <typename Rule, typename Iterator>
+        void _evaluate(
+            Rule const& /*rule*/,
+            std::size_t /*category*/, Iterator /*first*/, Iterator /*last*/,
+            empty&& /*value*/, ...)
+        {}
+
+        template <typename Rule, typename Iterator, typename Value>
+        Value&& _evaluate(
+            Rule const& /*rule*/,
+            std::size_t /*category*/, Iterator /*first*/, Iterator /*last*/,
+            Value&& value, ...)
+        {
+            return std::forward<Value>(value);
+        }
+
+        template <
+            typename Rule, typename Iterator,
+            typename Token = lexers::token<Iterator>>
+        auto _evaluate(
+            Rule const& rule,
+            std::size_t category, Iterator first, Iterator last,
+            empty&& /*payload*/, int)
+         -> decltype(rule.evaluate(std::declval<Token>()))
+        {
+            return rule.evaluate(Token{category, first, last});
+        }
+
+        template <
+            typename Rule, typename Iterator, typename Payload,
+            typename Token = lexers::token<Iterator, Payload>,
+            typename Enable = std::enable_if_t<!std::is_same_v<Payload, empty>>>
+        auto _evaluate(
+            Rule const& rule,
+            std::size_t category, Iterator first, Iterator last,
+            Payload&& payload, int)
+         -> decltype(rule.evaluate(std::declval<Token>()))
+        {
+            return rule.evaluate(Token{category, first, last,
+                std::forward<Payload>(payload)});
+        }
+
+        template <typename Rule, typename Iterator, typename Payload>
+        auto evaluate(
+            Rule const& rule,
+            std::size_t category, Iterator first, Iterator last,
+            Payload&& payload)
+        {
+            return detail::_evaluate(rule, category, first, last,
+                std::forward<Payload>(payload), 0);
+        }
+
         ///////////////////////////////////////////////////////////////////////
         template <typename Rule, typename Iterator, typename Sentinel>
-        struct _tokenization_rule_value
+        struct tokenization_rule_traits
         {
+            using rule = Rule;
+
 #ifdef __cpp_lib_invoke_result
             using Result = std::invoke_result_t<Rule&(Iterator&&, Sentinel&&)>;
 #else
             using Result = std::result_of_t<Rule&(Iterator&&, Sentinel&&)>;
 #endif
-
-            using type = std::decay_t<decltype(
+            using payload = std::decay_t<decltype(
                 detail::get_value<Iterator>(std::declval<Result&>()))>;
-        };
 
-        ///////////////////////////////////////////////////////////////////////
+            using value = std::decay_t<decltype(
+                detail::evaluate(std::declval<Rule&>(),
+                    std::size_t(), std::declval<Iterator>(), std::declval<Iterator>(),
+                    std::declval<payload>()))>;
+        };
+    }
+
+    ///////////////////////////////////////////////////////////////////////
+    namespace detail
+    {
+
+        template <std::size_t I, typename T>
+        struct indexed {};
+
         template <typename Ts, typename T>
         struct _value_append;
 
         template <typename ...Ts>
         struct _value_append<
-            std::variant<std::monostate, Ts...>, empty>
+            std::variant<std::monostate, Ts...>, void>
         {
             using type = std::variant<std::monostate, Ts...>;
         };
@@ -109,31 +181,35 @@ namespace eggs { namespace lexers
             using type = std::variant<std::monostate, Ts..., T>;
         };
 
-        template <std::size_t VI, typename T>
+        template <typename Rule, typename Payload = empty, typename Value = void>
         struct intermediate_state
         {
-            T value;
-            intermediate_state(T&& value) : value(std::move(value)) {}
+            Rule const& rule;
+            Payload payload;
+
+            intermediate_state(Rule const& rule, Payload&& payload)
+              : rule(rule)
+              , payload(std::move(payload))
+            {}
         };
 
-        template <std::size_t VI>
-        struct intermediate_state<VI, empty>
-        {
-            intermediate_state(empty = {}) {}
-        };
-
-        template <typename Ts, std::size_t VI, typename T>
+        template <typename Ts, std::size_t VI, typename RuleTrait>
         struct _intermediate_state_append;
 
-        template <typename ...Ts, std::size_t VI, typename T>
+        template <typename ...Ts, std::size_t VI, typename RuleTrait>
         struct _intermediate_state_append<
-            std::variant<Ts...>, VI, T>
+            std::variant<Ts...>, VI, RuleTrait>
         {
-            using intermediate = intermediate_state<VI, T>;
+            using intermediate = intermediate_state<
+                typename RuleTrait::rule,
+                typename RuleTrait::payload,
+                std::conditional_t<
+                    std::is_void_v<typename RuleTrait::value>, void,
+                    indexed<VI, typename RuleTrait::value>>>;
             using type = std::variant<Ts..., intermediate>;
         };
 
-        template <typename Ts, typename ITs, typename ...Values>
+        template <typename Ts, typename ITs, typename ...RuleTraits>
         struct _tokenization_value;
 
         template <typename Ts, typename ITs>
@@ -153,24 +229,23 @@ namespace eggs { namespace lexers
 
         template <
             typename Ts, typename ITs,
-            typename Value, typename ...Values>
+            typename RuleTrait, typename ...RuleTraits>
         struct _tokenization_value<
             Ts, ITs,
-            Value, Values...
+            RuleTrait, RuleTraits...
         > : _tokenization_value<
-                typename _value_append<Ts, Value>::type,
+                typename _value_append<Ts, typename RuleTrait::value>::type,
                 typename _intermediate_state_append<
-                    ITs, std::variant_size_v<Ts>, Value>::type,
-                Values...>
+                    ITs, std::variant_size_v<Ts>, RuleTrait>::type,
+                RuleTraits...>
         {};
 
         template <typename Iterator, typename Sentinel, typename ...Rules>
         struct tokenization_value
           : _tokenization_value<
                 std::variant<std::monostate>,
-                std::variant<intermediate_state<0, empty>>,
-                typename _tokenization_rule_value<
-                    Rules, Iterator, Sentinel>::type...>
+                std::variant<empty>,
+                tokenization_rule_traits<Rules, Iterator, Sentinel>...>
         {};
 
         ///////////////////////////////////////////////////////////////////////
@@ -188,17 +263,35 @@ namespace eggs { namespace lexers
             std::size_t category;
             Iterator first, last;
 
-            template <std::size_t I>
-            token operator()(intermediate_state<I, empty>&) const
+            token operator()(empty) const
             {
                 return token{category, first, last};
             }
 
-            template <std::size_t I, typename T>
-            token operator()(intermediate_state<I, T>& state) const
+            template <typename Ri>
+            token operator()(
+                intermediate_state<Ri>& /*match*/) const
             {
+                return token{category, first, last};
+            }
+
+            template <typename Ri, typename Pi>
+            token operator()(
+                intermediate_state<Ri, Pi>& match) const
+            {
+                detail::evaluate(match.rule, category, first, last,
+                    std::move(match.payload));
+                return token{category, first, last};
+            }
+
+            template <typename Ri, typename Pi, std::size_t I, typename Vi>
+            token operator()(
+                intermediate_state<Ri, Pi, indexed<I, Vi>>& match) const
+            {
+                auto value = detail::evaluate(match.rule, category, first, last,
+                    std::move(match.payload));
                 return token{category, first, last,
-                    std::in_place_index<I>, std::move(state).value};
+                    std::in_place_index<I>, std::move(value)};
             }
         };
 
@@ -227,7 +320,7 @@ namespace eggs { namespace lexers
                     mark_iter = iter;
                     mark_length = length;
                     mark_category.template emplace<I + 1>(
-                        detail::get_value<Iterator>(result));
+                        rule, detail::get_value<Iterator>(result));
                 }
                 return 0;
             }(index<Is>{}, rules)...});

@@ -95,6 +95,52 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
             word{});
 
         REQUIRE(t2.value.index() == 0u);
+
+        // evaluate
+        {
+            char const input[] = "123abc!";
+
+            auto const t0 = eggs::lexers::tokenize(
+                input + 0, input + sizeof(input) - 1,
+                rule_with_evaluate<number>{},
+                rule_with_evaluate<word>{});
+
+            constexpr bool no_value =
+                std::is_same_v<
+                    eggs::lexers::token<char const*> const,
+                    decltype(t0)>;
+            static_assert(no_value == true);
+
+            auto const t1 = eggs::lexers::tokenize(
+                input + 0, input + sizeof(input) - 1,
+                rule_with_evaluate<number, int>{42},
+                rule_with_evaluate<word>{});
+
+            REQUIRE(t1.value.index() == 0u);
+
+            auto const t2 = eggs::lexers::tokenize(
+                input + 0, input + sizeof(input) - 1,
+                rule_with_evaluate<number, int>{42},
+                rule_with_evaluate<word, int>{43});
+
+            REQUIRE(t2.value.index() == 2u);
+            CHECK(std::get<2>(t2.value) == 43);
+
+            auto const t3 = eggs::lexers::tokenize(
+                input + 0, input + sizeof(input) - 1,
+                rule_with_evaluate<number, int>{42},
+                rule_with_evaluate<word_with_value<int>>{{43}});
+
+            REQUIRE(t3.value.index() == 0u);
+
+            auto const t4 = eggs::lexers::tokenize(
+                input + 0, input + sizeof(input) - 1,
+                rule_with_evaluate<number, int>{42},
+                rule_with_evaluate<word_with_value<int>, std::string>{"43", {43}});
+
+            REQUIRE(t4.value.index() == 2u);
+            CHECK(std::get<2>(t4.value) == "43");
+        }
     }
 }
 

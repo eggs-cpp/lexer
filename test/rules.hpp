@@ -8,6 +8,8 @@
 #ifndef RULES_HPP
 #define RULES_HPP
 
+#include <eggs/lexer/token.hpp>
+
 #include <cctype>
 #include <utility>
 
@@ -76,5 +78,43 @@ using unit_with_value = rule_with_value<unit, Value>;
 
 template <typename Value>
 using punct_with_value = rule_with_value<punct, Value>;
+
+///////////////////////////////////////////////////////////////////////////////
+template <typename Rule, typename Value = void>
+struct rule_with_evaluate
+{
+    Value value;
+    Rule rule = {};
+
+    template <typename I, typename S>
+    decltype(auto) operator()(I first, S last) const
+    {
+        return rule(first, last);
+    }
+
+    template <typename I, typename V>
+    Value evaluate(eggs::lexers::token<I, V>&& /*token*/) const
+    {
+        return value;
+    }
+};
+
+template <typename Rule>
+struct rule_with_evaluate<Rule, void>
+{
+    Rule rule = {};
+
+    template <typename I, typename S>
+    decltype(auto) operator()(I first, S last) const
+    {
+        return rule(first, last);
+    }
+
+    template <typename I, typename V>
+    void evaluate(eggs::lexers::token<I, V>&& /*token*/) const
+    {
+        int breakpoint = 3;
+    }
+};
 
 #endif /*RULES_HPP*/
