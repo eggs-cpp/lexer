@@ -13,7 +13,8 @@ set(_tests
 set(_tests ${_tests}
   lexer.cnstr
   lexer.category_of
-  lexer.function_call)
+  lexer.function_call
+  lexer.tokenize)
 foreach (_test ${_tests})
   add_executable(test.${_test} ${_test}.cpp)
   target_link_libraries(test.${_test} Eggs::Lexer)

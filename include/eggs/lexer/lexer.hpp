@@ -111,6 +111,25 @@ namespace eggs { namespace lexers
             return detail::index_of<Rule, Rules...>::value;
         };
 
+        //! template <class Iterator, class Sentinel>
+        //! token<Iterator, Sentinel> tokenize(Iterator first, Sentinel last) const
+        //!
+        //! \requires The type `Iterator` shall satisfy ForwardIterator. The
+        //!  types `Sentinel` and `Iterator` shall satisfy Sentinel.
+        //!
+        //! \preconditions `[first, last)` shall denote a valid range.
+        //!
+        //! \effects Equivalent to `return lexers::tokenize(first, last,
+        //!  rules...)`, where the order of the tokenization rules corresponds
+        //!  to their order in the parameter pack `Rules`.
+        template <typename Iterator, typename Sentinel>
+        token<Iterator, Sentinel> tokenize(Iterator first, Sentinel last) const
+        {
+            return _tokenize(
+                std::make_index_sequence<sizeof...(Rules)>{},
+                first, last);
+        }
+
         //! template <class Iterator, class Sentinel, class OutputIterator>
         //! Iterator operator()(Iterator first, Sentinel last, OutputIterator result) const
         //!
@@ -131,8 +150,7 @@ namespace eggs { namespace lexers
         //!  denoting the end of the input range.
         //!
         //! \remarks Tokens are demarcated as if by successive calls to
-        //!  `tokenize`, where the order of the tokenization rules corresponds
-        //!  to their order in the parameter pack `Rules`.
+        //!  `tokenize`.
         template <
             typename Iterator, typename Sentinel,
             typename OutputIterator>
@@ -140,25 +158,9 @@ namespace eggs { namespace lexers
             Iterator first, Sentinel last,
             OutputIterator result) const
         {
-            return _tokenize(
-                std::make_index_sequence<sizeof...(Rules)>{},
-                first, last, result);
-        }
-
-    private:
-        template <
-            std::size_t ...Is,
-            typename Iterator, typename Sentinel,
-            typename OutputIterator>
-        Iterator _tokenize(
-            std::index_sequence<Is...>,
-            Iterator first, Sentinel last,
-            OutputIterator result) const
-        {
             while (first != last)
             {
-                token<Iterator, Sentinel> token =
-                    lexers::tokenize(first, last, std::get<Is>(_rules)...);
+                token<Iterator, Sentinel> token = tokenize(first, last);
                 if (token.category() == token.no_category)
                     break;
 
@@ -167,6 +169,17 @@ namespace eggs { namespace lexers
                 *result++ = std::move(token);
             }
             return first;
+        }
+
+    private:
+        template <
+            std::size_t ...Is,
+            typename Iterator, typename Sentinel>
+        token<Iterator, Sentinel> _tokenize(
+            std::index_sequence<Is...>,
+            Iterator first, Sentinel last) const
+        {
+            return lexers::tokenize(first, last, std::get<Is>(_rules)...);
         }
 
     private:
