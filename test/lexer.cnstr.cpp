@@ -31,6 +31,17 @@ struct non_default_constructible_rule : rule
     non_default_constructible_rule() = delete;
 };
 
+struct list_initializable_rule : rule
+{
+    list_initializable_rule(int, int, int) {}
+};
+
+struct non_copyable_rule : rule
+{
+    non_copyable_rule() = default;
+    non_copyable_rule(non_copyable_rule const&) = delete;
+};
+
 struct convertible_rule : rule {};
 
 TEST_CASE("lexer<Rules...>::lexer()", "[lexer.cnstr]")
@@ -49,6 +60,19 @@ TEST_CASE("lexer<Rules...>::lexer()", "[lexer.cnstr]")
             std::is_default_constructible_v<
                 eggs::lexers::lexer<non_default_constructible_rule>>;
         static_assert(default_constructible == false);
+    }
+}
+
+TEST_CASE("lexer<Rules...>::lexer(Rules const&...)", "[lexer.cnstr]")
+{
+    eggs::lexers::lexer<list_initializable_rule> l({1, 2, 3});
+
+    // sfinae
+    {
+        constexpr bool constructible_constructible =
+            std::is_constructible_v<
+                eggs::lexers::lexer<non_copyable_rule>, non_copyable_rule>;
+        static_assert(constructible_constructible == false);
     }
 }
 

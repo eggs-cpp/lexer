@@ -75,6 +75,22 @@ namespace eggs { namespace lexers
           : _rules()
         {}
 
+        //! explicit lexer(Rules const&... rules)
+        //!
+        //! \effects Initializes each tokenization rule with the value of the
+        //!  corresponding parameter.
+        //!
+        //! \remarks This constructor shall not participate in overload
+        //!  resolution unless `(is_copy_constructible_v<Rules> && ...)` is
+        //!  `true`.
+        template <
+            typename Depend = void,
+            typename Enable = std::enable_if_t<std::conjunction_v<
+                std::is_move_constructible<Rules>...>, Depend>>
+        explicit lexer(Rules const&... rules)
+          : _rules(rules...)
+        {}
+
         //! template <class ...URules>
         //! explicit lexer(URules&&... rules)
         //!
