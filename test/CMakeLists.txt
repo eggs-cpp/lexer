@@ -9,6 +9,7 @@ set(_tests
   token.assign
   token.cnstr
   token.category
+  token.raw
   token.tokenize)
 set(_tests ${_tests}
   lexer.cnstr

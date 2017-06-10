@@ -192,6 +192,14 @@ namespace eggs { namespace lexers
         //!
         //! \returns The category of this token.
         using token<Iterator>::category;
+
+        //! constexpr token<Iterator>& raw() & noexcept
+        //! constexpr token<Iterator>&& raw() && noexcept
+        //! constexpr token<Iterator> const& raw() const& noexcept
+        //! constexpr token<Iterator> const&& raw() const&& noexcept
+        //!
+        //! \returns A reference to `*this`.
+        using token<Iterator>::raw;
     };
 
     template <typename Iterator>
@@ -255,6 +263,32 @@ namespace eggs { namespace lexers
         constexpr std::size_t category() const noexcept
         {
             return _category;
+        }
+
+        //! constexpr token<Iterator>& raw() & noexcept
+        //! constexpr token<Iterator>&& raw() && noexcept
+        //! constexpr token<Iterator> const& raw() const& noexcept
+        //! constexpr token<Iterator> const&& raw() const&& noexcept
+        //!
+        //! \returns A reference to `*this`.
+        constexpr token& raw() & noexcept
+        {
+            return *this;
+        }
+
+        constexpr token&& raw() && noexcept
+        {
+            return std::move(*this);
+        }
+
+        constexpr token const& raw() const& noexcept
+        {
+            return *this;
+        }
+
+        constexpr token const&& raw() const&& noexcept
+        {
+            return std::move(*this);
         }
 
     private:
