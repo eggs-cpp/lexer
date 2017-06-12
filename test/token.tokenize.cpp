@@ -78,8 +78,7 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
             number_with_value<int>{42},
             word_with_value<int>{43});
 
-        REQUIRE(t0.value.index() == 2u);
-        CHECK(std::get<2>(t0.value) == 43);
+        REQUIRE(t0.value == 43);
 
         auto const t1 = eggs::lexers::tokenize(
             input + 0, input + sizeof(input) - 1,
@@ -123,8 +122,7 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
                 rule_with_evaluate<number, int>{42},
                 rule_with_evaluate<word, int>{43});
 
-            REQUIRE(t2.value.index() == 2u);
-            CHECK(std::get<2>(t2.value) == 43);
+            REQUIRE(t2.value == 43);
 
             auto const t3 = eggs::lexers::tokenize(
                 input + 0, input + sizeof(input) - 1,

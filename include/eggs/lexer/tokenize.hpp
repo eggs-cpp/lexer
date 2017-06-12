@@ -34,7 +34,7 @@ namespace eggs { namespace lexers
     //!
     //!   - `decltype(first) mark = rule(first, last);`, or
     //!
-    //!   - `auto&& [mark, value] = rule(first, last);`.
+    //!   - `auto [mark, value] = rule(first, last);`.
     //!
     //! - the resulting range `[first, mark)` shall be valid; if non-empty, it
     //!   denotes the lexeme of a demarcated token.
@@ -164,21 +164,21 @@ namespace eggs { namespace lexers
         template <std::size_t I, typename T>
         struct indexed {};
 
-        template <typename Ts, typename T>
+        template <typename Vs, typename V>
         struct _value_append;
 
-        template <typename ...Ts>
+        template <typename ...Vs>
         struct _value_append<
-            std::variant<std::monostate, Ts...>, void>
+            std::variant<std::monostate, Vs...>, void>
         {
-            using type = std::variant<std::monostate, Ts...>;
+            using type = std::variant<std::monostate, Vs...>;
         };
 
-        template <typename ...Ts, typename T>
+        template <typename ...Vs, typename V>
         struct _value_append<
-            std::variant<std::monostate, Ts...>, T>
+            std::variant<std::monostate, Vs...>, V>
         {
-            using type = std::variant<std::monostate, Ts..., T>;
+            using type = std::variant<std::monostate, Vs..., V>;
         };
 
         template <typename Rule, typename Payload = empty, typename Value = void>
@@ -193,58 +193,64 @@ namespace eggs { namespace lexers
             {}
         };
 
-        template <typename Ts, std::size_t VI, typename RuleTrait>
+        template <typename Ps, std::size_t Vi, typename RuleTrait>
         struct _intermediate_state_append;
 
-        template <typename ...Ts, std::size_t VI, typename RuleTrait>
+        template <typename ...Ps, std::size_t Vi, typename RuleTrait>
         struct _intermediate_state_append<
-            std::variant<Ts...>, VI, RuleTrait>
+            std::variant<Ps...>, Vi, RuleTrait>
         {
             using intermediate = intermediate_state<
                 typename RuleTrait::rule,
                 typename RuleTrait::payload,
                 std::conditional_t<
                     std::is_void_v<typename RuleTrait::value>, void,
-                    indexed<VI, typename RuleTrait::value>>>;
-            using type = std::variant<Ts..., intermediate>;
+                    indexed<Vi, typename RuleTrait::value>>>;
+            using type = std::variant<Ps..., intermediate>;
         };
 
-        template <typename Ts, typename ITs, typename ...RuleTraits>
+        template <typename Ps, typename Vs, typename ...RuleTraits>
         struct _tokenization_value;
 
-        template <typename Ts, typename ITs>
-        struct _tokenization_value<Ts, ITs>
-        {
-            using type = Ts;
-            using intermediate = ITs;
-        };
-
-        template <typename ITs>
+        template <typename ...Ps>
         struct _tokenization_value<
-            std::variant<std::monostate>, ITs>
+            std::variant<empty, Ps...>,
+            std::variant<std::monostate>>
         {
             using type = void;
-            using intermediate = ITs;
+            using intermediate = std::variant<empty, Ps...>;
+        };
+
+        template <typename ...Ps, typename V, typename ...Vs>
+        struct _tokenization_value<
+            std::variant<empty, Ps...>,
+            std::variant<std::monostate, V, Vs...>>
+        {
+            using type = std::conditional_t<
+                1 + sizeof...(Vs) == sizeof...(Ps)
+             && std::conjunction_v<std::is_same<V, Vs>...>,
+                V, std::variant<std::monostate, V, Vs...>>;
+            using intermediate = std::variant<empty, Ps...>;
         };
 
         template <
-            typename Ts, typename ITs,
+            typename Ps, typename Vs,
             typename RuleTrait, typename ...RuleTraits>
         struct _tokenization_value<
-            Ts, ITs,
+            Ps, Vs,
             RuleTrait, RuleTraits...
         > : _tokenization_value<
-                typename _value_append<Ts, typename RuleTrait::value>::type,
                 typename _intermediate_state_append<
-                    ITs, std::variant_size_v<Ts>, RuleTrait>::type,
+                    Ps, std::variant_size_v<Vs>, RuleTrait>::type,
+                typename _value_append<Vs, typename RuleTrait::value>::type,
                 RuleTraits...>
         {};
 
         template <typename Iterator, typename Sentinel, typename ...Rules>
         struct tokenization_value
           : _tokenization_value<
-                std::variant<std::monostate>,
                 std::variant<empty>,
+                std::variant<std::monostate>,
                 tokenization_rule_traits<Rules, Iterator, Sentinel>...>
         {};
 
@@ -254,6 +260,19 @@ namespace eggs { namespace lexers
 
         template <std::size_t I>
         using index = std::integral_constant<std::size_t, I>;
+
+        template <typename T>
+        struct is_variant
+          : std::false_type
+        {};
+
+        template <typename ...Ts>
+        struct is_variant<std::variant<Ts...>>
+          : std::true_type
+        {};
+
+        template <typename T>
+        constexpr bool is_variant_v = is_variant<T>::value;
 
         template <typename Iterator, typename Value>
         struct make_token
@@ -284,7 +303,20 @@ namespace eggs { namespace lexers
                 return token{category, first, last};
             }
 
-            template <typename Ri, typename Pi, std::size_t I, typename Vi>
+            template <
+                typename Ri, typename Pi, typename Vi,
+                typename Enable = std::enable_if_t<!is_variant_v<Value>, Vi>>
+            token operator()(
+                intermediate_state<Ri, Pi, Vi>& match) const
+            {
+                auto value = detail::evaluate(match.rule, category, first, last,
+                    std::move(match.payload));
+                return token{category, first, last, std::move(value)};
+            }
+
+            template <
+                typename Ri, typename Pi, std::size_t I, typename Vi,
+                typename Enable = std::enable_if_t<is_variant_v<Value>, Vi>>
             token operator()(
                 intermediate_state<Ri, Pi, indexed<I, Vi>>& match) const
             {
@@ -337,10 +369,10 @@ namespace eggs { namespace lexers
     //! token<Iterator, Value> tokenize(Iterator first, Sentinel last, Rules&&... rules)
     //!
     //! Let `Vi` be the type of the associated value of a token demarcated by
-    //!  the `i`th rule in `rules`, if any; otherwise, `void`. Let `Vs` be the
-    //!  pack comprised by the types `Vi` which are not `void`, if `Vs` is not
-    //!  empty then `Value` is `std::variant<std::monostate, Vs...>`,
-    //!  otherwise `Value` is `void`.
+    //!  the `i`th rule in `rules`, if any; otherwise, `void`. If all types
+    //!  `Vi` are the same type, then `Value` is that type. Otherwise, let
+    //!  `Vs` be the pack comprised by the types `Vi` which are not `void`,
+    //!  then `Value` is `std::variant<std::monostate, Vs...>`.
     //!
     //! \requires The type `Iterator` shall satisfy ForwardIterator. The types
     //!  `Sentinel` and `Iterator` shall satisfy Sentinel. Each type in the
