@@ -58,32 +58,64 @@ namespace eggs { namespace lexers
         {};
 
         ///////////////////////////////////////////////////////////////////////
-        struct empty {};
+        template <typename T>
+        struct opaque
+        {
+            using type = T;
+        };
 
+        template <typename T>
+        using opaque_t = typename opaque<T>::type;
+
+        ///////////////////////////////////////////////////////////////////////
         template <typename Iterator>
-        Iterator get_mark(Iterator mark)
+        Iterator get_mark(opaque_t<Iterator> mark)
         {
             return mark;
         }
 
-        template <typename Iterator, typename Value>
-        Iterator get_mark(std::pair<Iterator, Value>& s)
+#if __cpp_structured_bindings
+        template <typename Iterator, typename Struct>
+        Iterator get_mark(Struct& s)
         {
-            return s.first;
+            auto& [mark, value] = s; (void)value;
+            return mark;
         }
+#else
+        template <typename Iterator, typename Struct>
+        Iterator get_mark(Struct& s)
+        {
+            using std::get;
+            return get<0>(s);
+        }
+#endif
+
+        ///////////////////////////////////////////////////////////////////////
+        struct empty {};
 
         template <typename Iterator>
-        empty get_value(Iterator const& /*mark*/) noexcept
+        empty get_value(opaque_t<Iterator> /*mark*/) noexcept
         {
             return {};
         }
 
-        template <typename Iterator, typename Value>
-        Value&& get_value(std::pair<Iterator, Value>& s) noexcept
+#if __cpp_structured_bindings
+        template <typename Iterator, typename Struct>
+        decltype(auto) get_value(Struct& s) noexcept
         {
-            return std::move(s.second);
+            auto&& [mark, value] = std::move(s); (void)mark;
+            return std::forward<decltype(value)>(value);
         }
+#else
+        template <typename Iterator, typename Struct>
+        decltype(auto) get_value(Struct& s) noexcept
+        {
+            using std::get;
+            return get<1>(std::move(s));
+        }
+#endif
 
+        ///////////////////////////////////////////////////////////////////////
         template <typename Rule, typename Iterator>
         void _evaluate(
             Rule const& /*rule*/,
@@ -339,7 +371,7 @@ namespace eggs { namespace lexers
             std::size_t mark_length = 0;
             typename detail::tokenization_value<
                 Iterator, Sentinel, Rules...>::intermediate mark_category;
-            detail::_swallow_pack({[&](auto category, auto const& rule) -> int
+            auto&& lambda = [&](auto category, auto const& rule)
             {
                 constexpr std::size_t I = decltype(category)::value;
 
@@ -355,7 +387,7 @@ namespace eggs { namespace lexers
                         rule, detail::get_value<Iterator>(result));
                 }
                 return 0;
-            }(index<Is>{}, rules)...});
+            }; detail::_swallow_pack({lambda(index<Is>{}, rules)...});
 
             std::size_t const category = mark_category.index() - 1;
             return std::visit(

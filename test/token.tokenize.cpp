@@ -12,6 +12,26 @@
 #include "catch.hpp"
 #include "rules.hpp"
 
+template <typename Iterator, typename Value>
+struct aggregate
+{
+    Iterator mark;
+    Value value;
+};
+
+template <typename Rule, typename Value>
+struct rule_with_aggregate_value
+{
+    Value value;
+    Rule rule = {};
+
+    template <typename I, typename S>
+    aggregate<I, Value> operator()(I first, S last) const
+    {
+        return { rule(first, last), value };
+    }
+};
+
 TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
 {
     char const input[] = "123abc!";
@@ -94,6 +114,15 @@ TEST_CASE("tokenize(Iterator, Sentinel, Rules&&...)", "[token.tokenize]")
             word{});
 
         REQUIRE(t2.value.index() == 0u);
+
+#if __cpp_structured_bindings
+        auto const t3 = eggs::lexers::tokenize(
+            input + 0, input + sizeof(input) - 1,
+            rule_with_aggregate_value<number, int>{42},
+            rule_with_aggregate_value<word, int>{43});
+
+        REQUIRE(t3.value == 43);
+#endif
 
         // evaluate
         {
